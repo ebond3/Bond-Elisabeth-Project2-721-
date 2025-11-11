@@ -1,0 +1,91 @@
+---
+title: "721 Project 2"
+author: "Elisabeth Bond"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE,
+                      error = FALSE)
+
+library(dplyr)
+library(lubridate)
+```
+
+
+```{r}
+#Loading in the data
+aq_2018 = read.csv("AQ_2018.csv")
+aq_2019 = read.csv("AQ_2019.csv")
+aq_2020 = read.csv("AQ_2020.csv")
+
+```
+
+
+
+```{r}
+#Creating the function 
+cleaning_data_func <- function(df) {
+  df %>%
+    
+    #Renaming the variables 
+    rename(
+      CO_Conc = Daily.Max.8.hour.CO.Concentration,
+      PM2.5_Conc = Daily.Mean.PM2.5.Concentration,
+      Ozone_Conc = Daily.Max.8.hour.Ozone.Concentration
+    ) %>%
+    
+    #Fixing the date format 
+    mutate(
+      Date = as.Date(Date, format = "%m/%d/%Y")
+    ) %>%
+    
+    #Replacing negative Concentrations with 0
+    mutate(
+      across(
+        c(CO_Conc, PM2.5_Conc , Ozone_Conc),
+        ~ifelse(.x<0 , 0, .x)
+      )
+    ) %>%
+    
+    #Daily average for multiple entires in a day
+    group_by(Date) %>%
+    summarise(
+      CO_Conc = mean(CO_Conc, na.rm = TRUE),
+      PM2.5_Conc = mean(PM2.5_Conc, na.rm = TRUE),
+      Ozone_Conc = mean(Ozone_Conc, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    
+    #Removing any duplicate rows 
+    distinct(Date, .keep_all = TRUE)
+}
+```
+
+```{r}
+clean_aq2018 = cleaning_data_func(aq_2018)
+clean_aq2019 = cleaning_data_func(aq_2019)
+clean_aq2020 = cleaning_data_func(aq_2020)
+```
+
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
