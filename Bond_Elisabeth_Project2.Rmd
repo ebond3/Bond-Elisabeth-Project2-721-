@@ -6,10 +6,12 @@ output: word_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE,
-                      warning = FALSE,
-                      message = FALSE,
-                      error = FALSE)
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  error = FALSE
+)
 
 library(dplyr)
 library(lubridate)
@@ -18,41 +20,36 @@ library(ggplot2)
 
 
 ```{r}
-#Loading in the data
-aq_2018 = read.csv("AQ_2018.csv")
-aq_2019 = read.csv("AQ_2019.csv")
-aq_2020 = read.csv("AQ_2020.csv")
-
+# Loading in the data
+aq_2018 <- read.csv("AQ_2018.csv")
+aq_2019 <- read.csv("AQ_2019.csv")
+aq_2020 <- read.csv("AQ_2020.csv")
 ```
 
 
 
 ```{r}
-#Creating the function 
+# Creating the function
 cleaning_data_func <- function(df) {
   df %>%
-    
-    #Renaming the variables 
+    # Renaming the variables
     rename(
       CO_Conc = Daily.Max.8.hour.CO.Concentration,
       PM2.5_Conc = Daily.Mean.PM2.5.Concentration,
       Ozone_Conc = Daily.Max.8.hour.Ozone.Concentration
     ) %>%
-    
-    #Fixing the date format 
+    # Fixing the date format
     mutate(
       Date = as.Date(Date, format = "%m/%d/%Y")
     ) %>%
-    
-    #Replacing negative Concentrations with 0
+    # Replacing negative Concentrations with 0
     mutate(
       across(
-        c(CO_Conc, PM2.5_Conc , Ozone_Conc),
-        ~ifelse(.x<0 , 0, .x)
+        c(CO_Conc, PM2.5_Conc, Ozone_Conc),
+        ~ ifelse(.x < 0, 0, .x)
       )
     ) %>%
-    
-    #Daily average for multiple entires in a day
+    # Daily average for multiple entires in a day
     group_by(Date) %>%
     summarise(
       CO_Conc = mean(CO_Conc, na.rm = TRUE),
@@ -60,28 +57,27 @@ cleaning_data_func <- function(df) {
       Ozone_Conc = mean(Ozone_Conc, na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    
-    #Removing any duplicate rows 
+    # Removing any duplicate rows
     distinct(Date, .keep_all = TRUE)
 }
 ```
 
 ```{r}
-#Running the datasets through my cleaning function  
-clean_aq2018 = cleaning_data_func(aq_2018)
-clean_aq2019 = cleaning_data_func(aq_2019)
-clean_aq2020 = cleaning_data_func(aq_2020)
+# Running the datasets through my cleaning function
+clean_aq2018 <- cleaning_data_func(aq_2018)
+clean_aq2019 <- cleaning_data_func(aq_2019)
+clean_aq2020 <- cleaning_data_func(aq_2020)
 ```
 
 
 ```{r}
-#Prep for plot 1
+# Prep for plot 1
 
-#Merging all three years into one dataset for ggplot 
-merged_data = bind_rows(clean_aq2018, clean_aq2019, clean_aq2020)
+# Merging all three years into one dataset for ggplot
+merged_data <- bind_rows(clean_aq2018, clean_aq2019, clean_aq2020)
 
-#Monthly averages and CI prep of CO and O3
-monthly_av = merged_data %>%
+# Monthly averages and CI prep of CO and O3
+monthly_av <- merged_data %>%
   mutate(month = month(Date, label = TRUE, abbr = TRUE)) %>%
   group_by(month) %>%
   summarize(
@@ -91,26 +87,25 @@ monthly_av = merged_data %>%
     O3_se = sd(Ozone_Conc, na.rm = TRUE) / sqrt(sum(!is.na(Ozone_Conc)))
   ) %>%
   mutate(
-    CO_lower = CO_mean - 1.96*CO_se,
-    CO_upper = CO_mean + 1.96*CO_se,
-    O3_lower = O3_mean - 1.96*O3_se,
-    O3_upper = O3_mean + 1.96*O3_se
+    CO_lower = CO_mean - 1.96 * CO_se,
+    CO_upper = CO_mean + 1.96 * CO_se,
+    O3_lower = O3_mean - 1.96 * O3_se,
+    O3_upper = O3_mean + 1.96 * O3_se
   )
-
 ```
 
 
 ```{r}
-#Plot 1
+# Plot 1
 
 ggplot(monthly_av, aes(x = month)) +
-  #CO layer
-  geom_line(aes(y = CO_mean, color = "CO" , group = "CO"), linewidth = .5) +
+  # CO layer
+  geom_line(aes(y = CO_mean, color = "CO", group = "CO"), linewidth = .5) +
   geom_point(aes(y = CO_mean, color = "CO"), size = 2) +
   geom_errorbar(aes(ymin = CO_lower, ymax = CO_upper, color = "CO"), width = 0.4) +
 
-  #O3 layer
-  geom_line(aes(y = O3_mean, color = "O3" , group = "O3"), linewidth = .5) +
+  # O3 layer
+  geom_line(aes(y = O3_mean, color = "O3", group = "O3"), linewidth = .5) +
   geom_point(aes(y = O3_mean, color = "O3"), size = 2) +
   geom_errorbar(aes(ymin = O3_lower, ymax = O3_upper, color = "O3"), width = 0.4) +
   scale_color_brewer(palette = "Set1") +
@@ -121,36 +116,38 @@ ggplot(monthly_av, aes(x = month)) +
     title = "Monthly Average CO and O3 Concentrations (2018–2020)",
   ) +
   theme_minimal()
-
 ```
 
 ```{r}
-#Prep for Plot 2
+# Prep for Plot 2
 
-monthly_av_pm = merged_data %>%
-  mutate(month = month(Date, label = TRUE, abbr = TRUE),
-         year = year(Date)) %>%
+monthly_av_pm <- merged_data %>%
+  mutate(
+    month = month(Date, label = TRUE, abbr = TRUE),
+    year = year(Date)
+  ) %>%
   group_by(month, year) %>%
-  summarize(mean_PM25 = mean(PM2.5_Conc , na.rm = TRUE))
+  summarize(mean_PM25 = mean(PM2.5_Conc, na.rm = TRUE))
 ```
 
 
 ```{r}
-#Plot 2
+# Plot 2
 
-ggplot(data = monthly_av_pm, aes(x = month , y = mean_PM25,
-                                 color = factor(year) , group = year)) +
+ggplot(data = monthly_av_pm, aes(
+  x = month, y = mean_PM25,
+  color = factor(year), group = year
+)) +
   geom_line(linewidth = .5) +
   geom_point(size = 2) +
   scale_color_brewer(palette = "Set1") +
   theme_minimal() +
   labs(
-    x = "Month" ,
-    y = "Concentration PM2.5 (ug/m3 LC)" ,
-    color = "Year" ,
+    x = "Month",
+    y = "Concentration PM2.5 (ug/m3 LC)",
+    color = "Year",
     title = "Monthly Average PM2.5 by Year (Jan 2018 - Apr 2020)"
   )
-
 ```
 
 
